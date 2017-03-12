@@ -112,7 +112,7 @@ with open(filename) as f:
         for ec in ecs:
             graph1[read][ec]["weight"] = graph1[read][ec]["weight"] * 1.0 / sumw
         
-
+"""
 graph2 = nx.Graph()
 top_nodes = set(n for n,d in graph1.nodes(data=True) if d['bipartite']==0)
 graph2.add_nodes_from(top_nodes, bipartite=0)
@@ -142,7 +142,7 @@ for pathway in set(n for n,d in graph2.nodes(data=True) if d['bipartite']==1):
 
 
 pathways = list(pthws)
-
+"""
 
 
 
@@ -150,9 +150,9 @@ pathways = list(pthws)
 
 reads = {}
 proteins = {}
-for read in set(n for n,d in graph2.nodes(data=True) if d['bipartite']==0):
-    for protein in graph2.neighbors(read):
-        weight = graph2[read][protein]["weight"]
+for read in set(n for n,d in graph1.nodes(data=True) if d['bipartite']==0):
+    for protein in graph1.neighbors(read):
+        weight = graph1[read][protein]["weight"]
         read_where_maps = reads.get(read, set())
         read_where_maps.add((protein, weight))
         reads[read] = read_where_maps
@@ -162,14 +162,10 @@ for read in set(n for n,d in graph2.nodes(data=True) if d['bipartite']==0):
         proteins[protein] = protein_which_reads
 
 
-
-
-for pathway in pathways:
+for ec in proteins:
     # initialize pathway abundance by random numbers
-    new_prexp[pathway] = randint(1, 1000)
-    prexp[pathway] = INF
-
-
+    new_prexp[ec] = randint(1, 1000)
+    prexp[ec] = INF
 
 
 
@@ -206,9 +202,128 @@ while abs(distance(new_prexp, prexp)) > 0.0001:
 
 
 
+weights_map = new_prexp
+
+ecs = {}
+pathways = {}
+for ec, y in weights_map.items():
+    for path in ec_pathway_dict[ec]:
+        weight = 1
+        ec_where_maps = ecs.get(ec, set())
+        ec_where_maps.add((path, weight))
+        ecs[ec] = ec_where_maps
+
+        pathway_which_reads = pathways.get(path, set())
+        pathway_which_reads.add(ec)
+        pathways[path] = pathway_which_reads
+
+
+prexp = {}
+new_prexp = {}
+for path in pathways:
+    # initialize pathway abundance by random numbers
+    new_prexp[path] = randint(1, 1000)
+    prexp[path] = INF
+
+
+reads = ecs
+proteins = pathways
+
+
+
+print "MMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMM"
+
+while abs(distance(new_prexp, prexp)) > 0.0001:
+    prexp = copy(new_prexp)
+    # E-step:
+    # Compute the expected number n(j) of reads that come from protein j
+    nj = {}
+    for protein in proteins:
+        nj[protein] = 0
+    for read in reads:
+        s = 0
+        isoem2_score = weights_map[read]
+        for protein, e_value in reads[read]:
+            weight = float(e_value) #/ float(e_value) #prot_len[protein] / float(e_value)
+            s += weight * prexp[protein]
+        for protein, e_value in reads[read]:
+            weight = float(e_value)
+            if s > 0:
+                nj[protein] += isoem2_score * weight * prexp[protein] * 1.0 / s
+            else:
+                nj[protein] = 0
+    # M-step:
+    suma = 0
+    for protein in nj:
+        suma += nj[protein]# * 1.0 / prot_len[protein]
+    for protein in nj:
+        new_prexp[protein] = nj[protein] * 1.0 / suma #(nj[protein] * 1.0 / prot_len[protein]) / suma
+
+    print distance(new_prexp, prexp), "this is the distance"
+
+
+"""
+reads = {}
+proteins = {}
+for read in set(n for n,d in graph2.nodes(data=True) if d['bipartite']==0):
+    for protein in graph2.neighbors(read):
+        weight = graph2[read][protein]["weight"]
+        read_where_maps = reads.get(read, set())
+        read_where_maps.add((protein, weight))
+        reads[read] = read_where_maps
+
+        protein_which_reads = proteins.get(protein, set())
+        protein_which_reads.add(read)
+        proteins[protein] = protein_which_reads
+"""
+
+
+"""
+for pathway in pathways:
+    # initialize pathway abundance by random numbers
+    new_prexp[pathway] = randint(1, 1000)
+    prexp[pathway] = INF
+"""
+
+
+
+"""
+while abs(distance(new_prexp, prexp)) > 0.0001:
+    prexp = copy(new_prexp)
+    # E-step:
+    # Compute the expected number n(j) of reads that come from protein j
+    nj = {}
+    for protein in proteins:
+        nj[protein] = 0
+    for read in reads:
+        s = 0
+        isoem2_score = weights_map[read]
+        for protein, e_value in reads[read]:
+            weight = float(e_value) #/ float(e_value) #prot_len[protein] / float(e_value)
+            s += weight * prexp[protein]
+        for protein, e_value in reads[read]:
+            weight = float(e_value)
+            if s > 0:
+                nj[protein] += isoem2_score * weight * prexp[protein] * 1.0 / s
+            else:
+                nj[protein] = 0
+    # M-step:
+    suma = 0
+    for protein in nj:
+        suma += nj[protein]# * 1.0 / prot_len[protein]
+    for protein in nj:
+        new_prexp[protein] = nj[protein] * 1.0 / suma #(nj[protein] * 1.0 / prot_len[protein]) / suma
+
+
+    print distance(new_prexp, prexp), "this is the distance"
+
+
+"""
+
+
+
 with open(outputfile, "w") as q:
     new_prexp = sorted(new_prexp.items(), key=operator.itemgetter(1), reverse=True)
     for x, y in new_prexp:
         q.write("%s\t%s\n" % (x, y * 10000))
-
 

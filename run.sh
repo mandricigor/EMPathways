@@ -1,6 +1,8 @@
 
 
 
+
+
 ec_pathways_dict=ec_pathways_dict.txt
 isoem2=/data1/igorm/SUPER_IGOR_ISOEM/isoem-1.1.5/bin/isoem2
 fastaToGTF=../../bin/fastaToGTF
